@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP GUI Selector</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #7dd3fc;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #020817, #0f172a 40%, #111827);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: min(900px, 100%);
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid rgba(125, 211, 252, 0.25);
+      border-radius: 18px;
+      box-shadow: 0 20px 45px rgba(0,0,0,0.35);
+      padding: 30px 28px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      color: var(--accent);
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .winner {
+      background: rgba(17, 24, 39, 0.8);
+      border: 1px solid rgba(134, 239, 172, 0.4);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 26px;
+    }
+
+    .winner-label {
+      color: var(--good);
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .winner-name {
+      font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .winner-desc {
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: 1.18rem;
+      font-weight: bold;
+    }
+
+    .list-section {
+      margin-top: 28px;
+    }
+
+    .list-header {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    ol {
+      margin: 0;
+      padding-left: 22px;
+      color: var(--text);
+    }
+
+    li {
+      margin: 10px 0;
+      line-height: 1.5;
+    }
+
+    .score-good { color: var(--good); }
+    .score-warn { color: var(--warn); }
+    .score-bad { color: var(--bad); }
+
+    .button-row {
+      margin-top: 24px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary {
+      background: var(--accent);
+      color: #082f49;
+    }
+
+    .secondary {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ESP GUI Selector</h1>
+    <div class="subtitle">
+      A quick decision helper for choosing the best GUI for an ESP / embedded-friendly custom application.
+    </div>
+
+    <div class="winner">
+      <div class="winner-label">Recommended choice</div>
+      <div id="winnerName" class="winner-name">Loading...</div>
+      <p id="winnerDesc" class="winner-desc">Waiting for result...</p>
+    </div>
+
+    <div class="meta">
+      <div class="stat">
+        <div class="label">Reason</div>
+        <div id="reason" class="value">Loading...</div>
+      </div>
+      <div class="stat">
+        <div class="label">Best score</div>
+        <div id="score" class="value">Loading...</div>
+      </div>
+      <div class="stat">
+        <div class="label">Fit</div>
+        <div id="fit" class="value">Loading...</div>
+      </div>
+    </div>
+
+    <div class="list-section">
+      <div class="list-header">Ranking</div>
+      <ol id="ranking"></ol>
+    </div>
+
+    <div class="button-row">
+      <button class="primary" onclick="computeBestChoice()">Refresh recommendation</button>
+      <button class="secondary" onclick="loadExampleString()">Load sample string</button>
+    </div>
+  </div>
+
+  <script>
+    const repoData = `
+      {
+        "candidates": [
+          {
+            "name": "vlang/gui",
+            "desc": "An immediate mode UI framework for the V language.",
+            "kind": "gui",
+            "langs": ["V", "C", "Objective-C"]
+          },
+          {
+            "name": "faiface/gui",
+            "desc": "Super minimal, rock-solid foundation for concurrent GUI in Go.",
+            "kind": "gui",
+            "langs": ["Go"]
+          },
+          {
+            "name": "racket/gui",
+            "desc": "GUI library for Racket.",
+            "kind": "gui",
+            "langs": ["Racket"]
+          },
+          {
+            "name": "bitcoin-core/gui",
+            "desc": "Bitcoin Core GUI staging repository.",
+            "kind": "gui",
+            "langs": ["C++", "Python", "C", "CMake"]
+          },
+          {
+            "name": "open-ephys/GUI",
+            "desc": "Archived source code for the Open Ephys GUI.",
+            "kind": "gui",
+            "langs": ["C++", "C", "Objective-C++"]
+          },
+          {
+            "name": "KeithGalli/GUI",
+            "desc": "Source Code to go along with my video on how to program a gui in python using Tkinter.",
+            "kind": "gui",
+            "langs": ["Python"]
+          },
+          {
+            "name": "sld-columbia/esp",
+            "desc": "Embedded Scalable Platforms: Heterogeneous SoC architecture and IP integration made easy",
+            "kind": "project",
+            "langs": ["C", "VHDL", "C++", "Tcl", "Python", "Makefile"]
+          },
+          {
+            "name": "cloudendpoints/esp",
+            "desc": "Extensible Service Proxy",
+            "kind": "project",
+            "langs": ["C++", "Perl", "Shell", "Python"]
+          },
+          {
+            "name": "damellis/ESP",
+            "desc": "The Example-based Sensor Predictions (ESP) system applies machine learning to real-time sensor data.",
+            "kind": "project",
+            "langs": ["C++", "CMake", "Makefile"]
+          },
+          {
+            "name": "AlexanderKroll/ESP",
+            "desc": "ESP notebook project",
+            "kind": "project",
+            "langs": ["Jupyter Notebook", "Python"]
+          }
+        ]
+      }
+    `;
+
+    function scoreRepo(repo) {
+      const name = (repo.name || '').toLowerCase();
+      const desc = (repo.desc || '').toLowerCase();
+      const langs = (repo.langs || []).map(l => String(l).toLowerCase());
+
+      let score = 0;
+
+      if (repo.kind === 'gui') score += 30;
+      if (desc.includes('immediate mode')) score += 18;
+      if (desc.includes('minimal')) score += 8;
+      if (desc.includes('ui framework')) score += 12;
+      if (desc.includes('desktop')) score += 6;
+      if (langs.includes('v')) score += 12;
+      if (langs.includes('c')) score += 5;
+      if (langs.includes('c++') || langs.includes('cpp')) score += 3;
+
+      if (langs.includes('go')) score -= 4;
+      if (langs.includes('racket')) score -= 6;
+      if (langs.includes('python') && desc.includes('tkinter')) score -= 8;
+      if (name.includes('bitcoin')) score -= 5;
+      if (name.includes('esp') && repo.kind === 'project') score -= 25;
+      if (desc.includes('lightweight')) score += 7;
+      if (desc.includes('rock-solid')) score += 4;
+
+      return score;
+    }
+
+    function computeBestChoice() {
+      const parsed = JSON.parse(repoData);
+      const ranked = [...parsed.candidates].sort((a, b) => scoreRepo(b) - scoreRepo(a));
+      const winner = ranked[0];
+      const winnerScore = scoreRepo(winner);
+
+      const reason = winner.name === 'vlang/gui'
+        ? 'Lightweight immediate-mode UI, great fit for custom tooling and embedded-friendly desktop apps.'
+        : winner.name === 'faiface/gui'
+          ? 'Minimal GUI for Go but less suitable if you want a project-centered, embedded-friendly toolkit.'
+          : winner.name === 'open-ephys/GUI'
+            ? 'Strong scientific GUI history, but more specialized and less general than a lightweight custom UI.'
+            : 'Reasonable GUI option but less aligned with your ESP-focused lightweight tooling goal.';
+
+      document.getElementById('winnerName').textContent = winner.name;
+      document.getElementById('winnerDesc').textContent = winner.desc;
+      document.getElementById('reason').textContent = reason;
+      document.getElementById('score').textContent = `${winnerScore}`;
+      document.getElementById('fit').textContent = winner.name === 'vlang/gui' ? 'Excellent' : 'Good';
+
+      const rankingList = document.getElementById('ranking');
+      rankingList.innerHTML = '';
+      ranked.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `${index + 1}. <strong>${item.name}</strong> — score ${scoreRepo(item)}`;
+        rankingList.appendChild(li);
+      });
+    }
+
+    function loadExampleString() {
+      const sample = `vlang/gui|An immediate mode UI framework for the V language.|gui|V,C,Objective-C`;
+      const parts = sample.split('|');
+      const repo = {
+        name: parts[0],
+        desc: parts[1],
+        kind: parts[2],
+        langs: parts[3].split(',')
+      };
+
+      const raw = JSON.stringify({ candidates: [repo] }, null, 2);
+      document.getElementById('winnerName').textContent = repo.name;
+      document.getElementById('winnerDesc').textContent = repo.desc;
+      document.getElementById('reason').textContent = 'Loaded from an example string.';
+      document.getElementById('score').textContent = String(scoreRepo(repo));
+      document.getElementById('fit').textContent = 'Loaded';
+      document.getElementById('ranking').innerHTML = `<li>1. <strong>${repo.name}</strong> — score ${scoreRepo(repo)}</li>`;
+      console.log('Loaded example string:', raw);
+    }
+
+    computeBestChoice();
+  </script>
+</body>
+</html>
