@@ -31,7 +31,7 @@
     }
 
     .card {
-      width: min(900px, 100%);
+      width: min(920px, 100%);
       background: rgba(17, 24, 39, 0.9);
       border: 1px solid rgba(125, 211, 252, 0.25);
       border-radius: 18px;
@@ -118,6 +118,19 @@
       color: var(--accent);
     }
 
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      border-radius: 12px;
+      border: 1px solid rgba(125, 211, 252, 0.3);
+      background: rgba(15, 23, 42, 0.65);
+      color: var(--text);
+      padding: 14px;
+      font-family: Consolas, monospace;
+      margin-top: 10px;
+      resize: vertical;
+    }
+
     ol {
       margin: 0;
       padding-left: 22px;
@@ -128,10 +141,6 @@
       margin: 10px 0;
       line-height: 1.5;
     }
-
-    .score-good { color: var(--good); }
-    .score-warn { color: var(--warn); }
-    .score-bad { color: var(--bad); }
 
     .button-row {
       margin-top: 24px;
@@ -167,27 +176,27 @@
   <div class="card">
     <h1>ESP GUI Selector</h1>
     <div class="subtitle">
-      A quick decision helper for choosing the best GUI for an ESP / embedded-friendly custom application.
+      This page loads a string value and picks the best GUI candidate for an ESP-focused project.
     </div>
 
     <div class="winner">
       <div class="winner-label">Recommended choice</div>
       <div id="winnerName" class="winner-name">Loading...</div>
-      <p id="winnerDesc" class="winner-desc">Waiting for result...</p>
+      <p id="winnerDesc" class="winner-desc">Waiting for string to load...</p>
     </div>
 
     <div class="meta">
       <div class="stat">
         <div class="label">Reason</div>
-        <div id="reason" class="value">Loading...</div>
+        <div id="reason" class="value">Waiting...</div>
       </div>
       <div class="stat">
         <div class="label">Best score</div>
-        <div id="score" class="value">Loading...</div>
+        <div id="score" class="value">Waiting...</div>
       </div>
       <div class="stat">
         <div class="label">Fit</div>
-        <div id="fit" class="value">Loading...</div>
+        <div id="fit" class="value">Waiting...</div>
       </div>
     </div>
 
@@ -196,79 +205,30 @@
       <ol id="ranking"></ol>
     </div>
 
+    <label class="list-header" for="dataString">Load string data</label>
+    <textarea id="dataString" spellcheck="false"></textarea>
+
     <div class="button-row">
-      <button class="primary" onclick="computeBestChoice()">Refresh recommendation</button>
-      <button class="secondary" onclick="loadExampleString()">Load sample string</button>
+      <button class="primary" onclick="loadStringFromTextarea()">Load string</button>
+      <button class="secondary" onclick="loadDefaultString()">Use default string</button>
     </div>
   </div>
 
   <script>
-    const repoData = `
-      {
-        "candidates": [
-          {
-            "name": "vlang/gui",
-            "desc": "An immediate mode UI framework for the V language.",
-            "kind": "gui",
-            "langs": ["V", "C", "Objective-C"]
-          },
-          {
-            "name": "faiface/gui",
-            "desc": "Super minimal, rock-solid foundation for concurrent GUI in Go.",
-            "kind": "gui",
-            "langs": ["Go"]
-          },
-          {
-            "name": "racket/gui",
-            "desc": "GUI library for Racket.",
-            "kind": "gui",
-            "langs": ["Racket"]
-          },
-          {
-            "name": "bitcoin-core/gui",
-            "desc": "Bitcoin Core GUI staging repository.",
-            "kind": "gui",
-            "langs": ["C++", "Python", "C", "CMake"]
-          },
-          {
-            "name": "open-ephys/GUI",
-            "desc": "Archived source code for the Open Ephys GUI.",
-            "kind": "gui",
-            "langs": ["C++", "C", "Objective-C++"]
-          },
-          {
-            "name": "KeithGalli/GUI",
-            "desc": "Source Code to go along with my video on how to program a gui in python using Tkinter.",
-            "kind": "gui",
-            "langs": ["Python"]
-          },
-          {
-            "name": "sld-columbia/esp",
-            "desc": "Embedded Scalable Platforms: Heterogeneous SoC architecture and IP integration made easy",
-            "kind": "project",
-            "langs": ["C", "VHDL", "C++", "Tcl", "Python", "Makefile"]
-          },
-          {
-            "name": "cloudendpoints/esp",
-            "desc": "Extensible Service Proxy",
-            "kind": "project",
-            "langs": ["C++", "Perl", "Shell", "Python"]
-          },
-          {
-            "name": "damellis/ESP",
-            "desc": "The Example-based Sensor Predictions (ESP) system applies machine learning to real-time sensor data.",
-            "kind": "project",
-            "langs": ["C++", "CMake", "Makefile"]
-          },
-          {
-            "name": "AlexanderKroll/ESP",
-            "desc": "ESP notebook project",
-            "kind": "project",
-            "langs": ["Jupyter Notebook", "Python"]
-          }
-        ]
-      }
-    `;
+    const defaultString = `{
+      "candidates": [
+        {"name":"vlang/gui","desc":"An immediate mode UI framework for the V language.","kind":"gui","langs":["V","C","Objective-C"]},
+        {"name":"faiface/gui","desc":"Super minimal, rock-solid foundation for concurrent GUI in Go.","kind":"gui","langs":["Go"]},
+        {"name":"racket/gui","desc":"GUI library for Racket.","kind":"gui","langs":["Racket"]},
+        {"name":"bitcoin-core/gui","desc":"Bitcoin Core GUI staging repository.","kind":"gui","langs":["C++","Python","C","CMake"]},
+        {"name":"open-ephys/GUI","desc":"Archived source code for the Open Ephys GUI.","kind":"gui","langs":["C++","C","Objective-C++"]},
+        {"name":"KeithGalli/GUI","desc":"Source Code to go along with my video on how to program a gui in python using Tkinter.","kind":"gui","langs":["Python"]},
+        {"name":"sld-columbia/esp","desc":"Embedded Scalable Platforms: Heterogeneous SoC architecture and IP integration made easy","kind":"project","langs":["C","VHDL","C++","Tcl","Python","Makefile"]},
+        {"name":"cloudendpoints/esp","desc":"Extensible Service Proxy","kind":"project","langs":["C++","Perl","Shell","Python"]},
+        {"name":"damellis/ESP","desc":"The Example-based Sensor Predictions (ESP) system applies machine learning to real-time sensor data.","kind":"project","langs":["C++","CMake","Makefile"]},
+        {"name":"AlexanderKroll/ESP","desc":"ESP notebook project","kind":"project","langs":["Jupyter Notebook","Python"]}
+      ]
+    }`;
 
     function scoreRepo(repo) {
       const name = (repo.name || '').toLowerCase();
@@ -297,24 +257,23 @@
       return score;
     }
 
-    function computeBestChoice() {
-      const parsed = JSON.parse(repoData);
-      const ranked = [...parsed.candidates].sort((a, b) => scoreRepo(b) - scoreRepo(a));
+    function renderSelection(dataObject) {
+      const ranked = [...dataObject.candidates].sort((a, b) => scoreRepo(b) - scoreRepo(a));
       const winner = ranked[0];
       const winnerScore = scoreRepo(winner);
 
       const reason = winner.name === 'vlang/gui'
-        ? 'Lightweight immediate-mode UI, great fit for custom tooling and embedded-friendly desktop apps.'
+        ? 'Lightweight immediate-mode UI that fits custom tooling and lightweight desktop applications well.'
         : winner.name === 'faiface/gui'
-          ? 'Minimal GUI for Go but less suitable if you want a project-centered, embedded-friendly toolkit.'
+          ? 'Minimal Go GUI, but not the best match for an ESP-focused, general-purpose tool.'
           : winner.name === 'open-ephys/GUI'
-            ? 'Strong scientific GUI history, but more specialized and less general than a lightweight custom UI.'
-            : 'Reasonable GUI option but less aligned with your ESP-focused lightweight tooling goal.';
+            ? 'A strong specialized GUI but less versatile than a lightweight custom UI framework.'
+            : 'Reasonable option, but less aligned with the ESP-focused custom tool goal.';
 
       document.getElementById('winnerName').textContent = winner.name;
       document.getElementById('winnerDesc').textContent = winner.desc;
       document.getElementById('reason').textContent = reason;
-      document.getElementById('score').textContent = `${winnerScore}`;
+      document.getElementById('score').textContent = String(winnerScore);
       document.getElementById('fit').textContent = winner.name === 'vlang/gui' ? 'Excellent' : 'Good';
 
       const rankingList = document.getElementById('ranking');
@@ -326,27 +285,39 @@
       });
     }
 
-    function loadExampleString() {
-      const sample = `vlang/gui|An immediate mode UI framework for the V language.|gui|V,C,Objective-C`;
-      const parts = sample.split('|');
-      const repo = {
-        name: parts[0],
-        desc: parts[1],
-        kind: parts[2],
-        langs: parts[3].split(',')
-      };
-
-      const raw = JSON.stringify({ candidates: [repo] }, null, 2);
-      document.getElementById('winnerName').textContent = repo.name;
-      document.getElementById('winnerDesc').textContent = repo.desc;
-      document.getElementById('reason').textContent = 'Loaded from an example string.';
-      document.getElementById('score').textContent = String(scoreRepo(repo));
-      document.getElementById('fit').textContent = 'Loaded';
-      document.getElementById('ranking').innerHTML = `<li>1. <strong>${repo.name}</strong> — score ${scoreRepo(repo)}</li>`;
-      console.log('Loaded example string:', raw);
+    function loadStringData(str) {
+      try {
+        const parsed = JSON.parse(str);
+        if (!parsed || !Array.isArray(parsed.candidates) || !parsed.candidates.length) {
+          throw new Error('No candidates found');
+        }
+        renderSelection(parsed);
+      } catch (err) {
+        document.getElementById('winnerName').textContent = 'Error';
+        document.getElementById('winnerDesc').textContent = 'The string could not be parsed. Use valid JSON with a "candidates" array.';
+        document.getElementById('reason').textContent = 'Invalid data format';
+        document.getElementById('score').textContent = '0';
+        document.getElementById('fit').textContent = 'No';
+        console.error(err);
+      }
     }
 
-    computeBestChoice();
+    function loadStringFromTextarea() {
+      const value = document.getElementById('dataString').value.trim();
+      if (!value) {
+        alert('Please paste a JSON string first.');
+        return;
+      }
+      loadStringData(value);
+    }
+
+    function loadDefaultString() {
+      document.getElementById('dataString').value = defaultString;
+      loadStringFromTextarea();
+    }
+
+    document.getElementById('dataString').value = defaultString;
+    loadStringFromTextarea();
   </script>
 </body>
 </html>
